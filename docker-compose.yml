@@ -1,0 +1,33 @@
+# docker compose up --build --scale worker=3     (API on http://localhost:8000)
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: { context: ., dockerfile: api/Dockerfile }
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    depends_on:
+      redis: { condition: service_healthy }
+
+  worker:
+    build: { context: ., dockerfile: worker/Dockerfile }
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      LEASE_SECONDS: "10"
+      BASE_BACKOFF: "1"
+    stop_grace_period: 30s        # lets a worker finish its current job on SIGTERM
+    deploy: { replicas: 2 }
+    depends_on:
+      redis: { condition: service_healthy }
+
+volumes:
+  redis_data:

@@ -1,0 +1,4 @@
+pytest
+httpx
+fastapi==0.115.0
+redis>=5
